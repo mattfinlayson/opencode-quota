@@ -88,6 +88,17 @@ Additional boundary tests to keep healthy when touching plugin/provider logic:
 - `tests/plugin.qwen-hook.test.ts`
 - `tests/quota-provider-boundary.test.ts`
 
+## Provider Changes
+
+When adding a provider, keep the README setup wording tied to real behavior.
+
+- For API-key/token providers that support `Existing OpenCode auth, global config, or env`, start from `contributing/provider-template/`.
+- Copy the template files to the target paths listed in `contributing/provider-template/README.md`.
+- Replace the example names, ids, env vars, and config keys before coding.
+- Add tests for each supported auth source before using the shared README wording; do not leave copied template tests skipped, todo-only, or unresolved.
+- In the PR checklist, state whether you started from the provider template; if not, explain why it does not apply.
+- Do not use that wording for OAuth-only providers such as OpenAI.
+
 ## Quality Bar for Fixes
 
 - Prefer the smallest safe fix that addresses the root cause.
@@ -102,4 +113,6 @@ Additional boundary tests to keep healthy when touching plugin/provider logic:
 - `npm test` passes.
 - `npm run build` passes.
 - Verified behavior against the current production released OpenCode version, and included the tested version in the PR notes.
-- Updated docs when user-facing commands/config/workflow changed (at minimum `README.md`, plus this file when policy/workflow guidance changes).
+- Updated docs when user-facing commands/config/workflow changed (usually `README.md`; update this file when contributor workflow changes).
+- For new API-key/token providers, started from `contributing/provider-template/` or explained why the template does not apply.
+- For provider setup/auth wording changes, checked `contributing/provider-template/` and verified README wording against implementation/tests.

@@ -162,7 +162,7 @@ If you want the `Quota` sidebar panel, you need the plugin in both OpenCode conf
 | ----------------------- | ------------------ | --------------------------------------------------------- | ------------------------ |
 | Anthropic (Claude)      | [Needs quick setup](#anthropic-claude-quick-setup) | Install and authenticate Claude CLI                       | Local CLI or OAuth usage |
 | GitHub Copilot          | Usually automatic  | Existing OpenCode auth, or optional PAT config            | Remote API               |
-| OpenAI                  | Automatic          | Existing OpenCode auth                                    | Remote API               |
+| OpenAI                  | Automatic          | Existing OpenCode OAuth                                   | Remote API               |
 | Cursor                  | [Needs quick setup](#cursor-quick-setup) | `["@playwo/opencode-cursor-oauth", "@slkiser/opencode-quota"]` | Local estimation         |
 | Qwen Code               | [Needs quick setup](#qwen-code-quick-setup) | `["opencode-qwencode-auth", "@slkiser/opencode-quota"]`   | Local estimation         |
 | Alibaba Coding Plan     | Automatic          | Existing OpenCode auth, global config, or env             | Local estimation         |
@@ -444,7 +444,7 @@ Run `/quota_status` and check the OpenAI auth source and token status.
 
 | Symptom | Fix |
 | --- | --- |
-| OpenAI quota missing | Confirm OpenCode native OpenAI auth is present in `auth.json`. |
+| OpenAI quota missing | Confirm OpenCode native OpenAI OAuth is present in `auth.json`. |
 | Token expired | Re-run OpenCode's OpenAI auth flow. |
 | Provider not detected | Confirm your OpenCode config uses the `openai` provider or a compatible OpenAI auth entry. |
 
