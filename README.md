@@ -28,15 +28,18 @@ npx @slkiser/opencode-quota init
 > [!IMPORTANT]
 > OpenCode `>= 1.4.3` and Node.js `>= 18` are required.
 
-The installer is append-only: it adds missing plugin/config entries and leaves existing values alone.
+The installer appends missing plugin/config entries and preserves unrelated/custom settings. Re-running it updates installer-owned Quota UI surface flags from your current Quota UI answer.
 
 ### What the installer asks
 
 | Question | Pick this when you want... |
 | --- | --- |
+| Install scope | Project config for this repo/worktree, or Global OpenCode config for all projects using your global config. |
 | Quota UI | Toasts, Sidebar panel, Compact status line, terminal/slash-command only, or a mix. |
-| Providers | Auto-detection for most users, or an explicit provider list for tighter control. |
-| Config location | The OpenCode config file this project should use. |
+| Provider mode | Auto-detection for most users, or an explicit provider list for tighter control. |
+| Quota reset periods | One reset period per provider for compact checks, or all reset periods per provider for detailed comparisons. |
+| Quota percentage meaning | Remaining quota or used quota in toast/sidebar displays. |
+| Session token details | Show or hide current session input/output token counts. |
 
 ### After install
 
@@ -45,6 +48,7 @@ The installer is append-only: it adds missing plugin/config entries and leaves e
 3. If something looks wrong, run `/quota_status`.
 4. If you selected Sidebar panel, open the session sidebar and look for `Quota`.
 5. If you selected Compact status line, look for the home-bottom quota line.
+6. If the installer helped, starring the project is appreciated: <https://github.com/slkiser/opencode-quota>.
 
 ### Terminal-only check
 
@@ -193,7 +197,7 @@ Customize these settings in `opencode-quota/quota-toast.json`.
 </details>
 
 <details>
-<summary><strong>Show every quota window</strong></summary>
+<summary><strong>Show all quota reset periods</strong></summary>
 
 ```jsonc
 {
@@ -283,8 +287,8 @@ Existing `experimental.quotaToast` settings still work when no sidecar file exis
 | `enabledProviders` | `"auto"` | Auto-detect providers, or set an explicit provider list. |
 | `minIntervalMs` | `300000` | Minimum fetch interval between provider updates. |
 | `requestTimeoutMs` | `5000` | Remote provider request timeout in milliseconds. |
-| `formatStyle` | `singleWindow` | Shared quota-row style for popup toasts and the Sidebar panel: `singleWindow` or `allWindows`. Legacy `classic`/`grouped` aliases still work. |
-| `percentDisplayMode` | `remaining` | Shared percent meaning for popup toasts and the Sidebar panel: `remaining` or `used`. `/quota` keeps its existing remaining-oriented percentage output. |
+| `formatStyle` | `singleWindow` | Shared quota reset-period display for popup toasts and the Sidebar panel: `singleWindow` shows one reset period per provider; `allWindows` shows all reset periods per provider. Legacy `classic`/`grouped` aliases are still accepted. |
+| `percentDisplayMode` | `remaining` | Shared quota percentage meaning for popup toasts and the Sidebar panel: `remaining` shows quota left; `used` shows quota consumed. `/quota` keeps its existing remaining-percent output. |
 | `onlyCurrentModel` | `false` | Filter quota rows to the current model/provider when that session selection can be resolved. |
 | `showSessionTokens` | `true` | Show the `Session input/output tokens` section when session token data is available. |
 | `pricingSnapshot.source` | `"auto"` | Token pricing snapshot selection for `/tokens_*`: `auto`, `bundled`, or `runtime`. |

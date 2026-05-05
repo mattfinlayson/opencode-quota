@@ -31,6 +31,8 @@ import type { QuotaToastConfig } from "./types.js";
 const QUOTA_PLUGIN_SPEC = "@slkiser/opencode-quota";
 const OPENCODE_SCHEMA_URL = "https://opencode.ai/config.json";
 const TUI_SCHEMA_URL = "https://opencode.ai/tui.json";
+const GITHUB_REPO_URL = "https://github.com/slkiser/opencode-quota";
+const GITHUB_STAR_NOTE = `if this helps, stars are appreciated: ${GITHUB_REPO_URL}`;
 
 export type InitInstallerScope = "project" | "global";
 export type InitQuotaUiChoice = "toast" | "sidebar" | "compact_status" | "none";
@@ -68,6 +70,7 @@ export interface PlannedConfigEdit {
   changed: boolean;
   addedPlugins: string[];
   addedKeys: string[];
+  updatedKeys: string[];
   skippedValues: string[];
   warnings: string[];
   nextData?: Record<string, unknown>;
@@ -106,6 +109,7 @@ type JsonObject = Record<string, unknown>;
 type PromptOption = {
   label: string;
   value: string;
+  hint?: string;
 };
 
 type NormalizedQuotaUiIntent = {
@@ -374,6 +378,27 @@ function addSettingIfMissing(
   pushSkippedIfChanged(edit, pathLabel, target[key], value);
 }
 
+function setInstallerOwnedSetting(
+  target: JsonObject,
+  key: string,
+  value: unknown,
+  pathLabel: string,
+  edit: PlannedConfigEdit,
+): void {
+  if (!hasOwnKey(target, key)) {
+    target[key] = value;
+    edit.changed = true;
+    edit.addedKeys.push(pathLabel);
+    return;
+  }
+
+  if (!jsonEqual(target[key], value)) {
+    target[key] = value;
+    edit.changed = true;
+    edit.updatedKeys.push(pathLabel);
+  }
+}
+
 function planTuiSidebarPanelConfig(params: {
   quotaToast: JsonObject;
   quotaUiIntent: NormalizedQuotaUiIntent;
@@ -391,7 +416,7 @@ function planTuiSidebarPanelConfig(params: {
     return;
   }
 
-  addSettingIfMissing(
+  setInstallerOwnedSetting(
     tuiSidebarPanel,
     "enabled",
     params.quotaUiIntent.enableSidebarPanel,
@@ -405,13 +430,14 @@ function planTuiCompactStatusConfig(params: {
   quotaUiIntent: NormalizedQuotaUiIntent;
   edit: PlannedConfigEdit;
 }): void {
-  if (!params.quotaUiIntent.enableCompactStatus) {
+  const hasExistingCompactStatus = hasOwnKey(params.quotaToast, "tuiCompactStatus");
+  if (!params.quotaUiIntent.enableCompactStatus && !hasExistingCompactStatus) {
     return;
   }
 
   const pathLabel = "quotaToast.tuiCompactStatus";
   let tuiCompactStatus: JsonObject;
-  if (!hasOwnKey(params.quotaToast, "tuiCompactStatus")) {
+  if (!hasExistingCompactStatus) {
     tuiCompactStatus = {};
     params.quotaToast.tuiCompactStatus = tuiCompactStatus;
   } else if (isPlainObject(params.quotaToast.tuiCompactStatus)) {
@@ -421,16 +447,27 @@ function planTuiCompactStatusConfig(params: {
     return;
   }
 
-  addSettingIfMissing(tuiCompactStatus, "enabled", true, `${pathLabel}.enabled`, params.edit);
-  addSettingIfMissing(tuiCompactStatus, "homeBottom", true, `${pathLabel}.homeBottom`, params.edit);
-  addSettingIfMissing(
+  setInstallerOwnedSetting(
+    tuiCompactStatus,
+    "enabled",
+    params.quotaUiIntent.enableCompactStatus,
+    `${pathLabel}.enabled`,
+    params.edit,
+  );
+
+  if (!params.quotaUiIntent.enableCompactStatus) {
+    return;
+  }
+
+  setInstallerOwnedSetting(tuiCompactStatus, "homeBottom", true, `${pathLabel}.homeBottom`, params.edit);
+  setInstallerOwnedSetting(
     tuiCompactStatus,
     "sessionPrompt",
     false,
     `${pathLabel}.sessionPrompt`,
     params.edit,
   );
-  addSettingIfMissing(
+  setInstallerOwnedSetting(
     tuiCompactStatus,
     "suppressWhenNativeProviderQuota",
     true,
@@ -573,6 +610,7 @@ async function planOpencodeEdit(params: {
     changed: false,
     addedPlugins: [],
     addedKeys: [],
+    updatedKeys: [],
     skippedValues: [],
     warnings:
       target.format === "jsonc"
@@ -622,6 +660,7 @@ async function planQuotaConfigEdit(params: {
     changed: false,
     addedPlugins: [],
     addedKeys: [],
+    updatedKeys: [],
     skippedValues: [],
     warnings: [],
   };
@@ -642,7 +681,7 @@ async function planQuotaConfigEdit(params: {
     );
   }
 
-  addSettingIfMissing(
+  setInstallerOwnedSetting(
     quotaToast,
     "enableToast",
     params.quotaUiIntent.enableToast,
@@ -712,6 +751,7 @@ async function planTuiEdit(params: {
     changed: false,
     addedPlugins: [],
     addedKeys: [],
+    updatedKeys: [],
     skippedValues: [],
     warnings:
       target.format === "jsonc"
@@ -748,9 +788,9 @@ function buildPlanSummary(plan: InitInstallerPlan): string[] {
     `Scope: ${plan.selections.scope} (${plan.baseDir})`,
     `Quota UI: ${getUiLabel(quotaUiIntent.choices)}`,
     `Provider mode: ${getProviderModeLabel(plan.selections.providerMode)}`,
-    `Quota display style: ${getQuotaFormatStyleLabel(plan.selections.formatStyle)}`,
-    `Percent display (toast/sidebar): ${getPercentDisplayModeLabel(plan.selections.percentDisplayMode)}`,
-    `Show session tokens: ${plan.selections.showSessionTokens ? "Yes" : "No"}`,
+    `Quota reset periods: ${getQuotaFormatStyleLabel(plan.selections.formatStyle)}`,
+    `Quota percentage meaning: ${getPercentDisplayModeLabel(plan.selections.percentDisplayMode)}`,
+    `Session token details: ${plan.selections.showSessionTokens ? "Show" : "Hide"}`,
   ];
 
   if (quotaUiIntent.enableCompactStatus) {
@@ -773,6 +813,9 @@ function buildPlanSummary(plan: InitInstallerPlan): string[] {
     }
     for (const key of edit.addedKeys) {
       lines.push(`  + ${key}`);
+    }
+    for (const key of edit.updatedKeys) {
+      lines.push(`  ~ ${key}`);
     }
     for (const skipped of edit.skippedValues) {
       lines.push(`  = ${skipped}`);
@@ -912,8 +955,8 @@ async function promptForSelections(
   const scope = await prompts.select({
     message: "Install scope",
     options: [
-      { label: "Project", value: "project" },
-      { label: "Global", value: "global" },
+      { label: "Project config", value: "project", hint: "install only for this repo/worktree" },
+      { label: "Global OpenCode config", value: "global", hint: "install for all projects using your global config" },
     ],
   });
   if (prompts.isCancel(scope)) return null;
@@ -922,10 +965,10 @@ async function promptForSelections(
     message: "Quota UI",
     required: true,
     options: [
-      { label: "Toast", value: "toast" },
-      { label: "Sidebar", value: "sidebar" },
-      { label: "Compact status", value: "compact_status" },
-      { label: "None (slash commands and terminal only)", value: "none" },
+      { label: "Toast", value: "toast", hint: "popup quota summaries after idle/question/compact events" },
+      { label: "Sidebar panel", value: "sidebar", hint: "full Quota panel in the OpenCode session sidebar" },
+      { label: "Compact status line", value: "compact_status", hint: "short quota summary in the TUI status area" },
+      { label: "Terminal/slash commands only", value: "none", hint: "no toast, sidebar, or compact status UI" },
     ],
   });
   if (prompts.isCancel(quotaUi)) return null;
@@ -936,8 +979,8 @@ async function promptForSelections(
   const providerMode = await prompts.select({
     message: "Provider mode",
     options: [
-      { label: "Auto-detect", value: "auto" },
-      { label: "Manual select", value: "manual" },
+      { label: "Auto-detect providers", value: "auto", hint: "recommended; use providers found in your OpenCode/auth setup" },
+      { label: "Choose providers manually", value: "manual", hint: "only track the providers you select" },
     ],
   });
   if (prompts.isCancel(providerMode)) return null;
@@ -957,31 +1000,34 @@ async function promptForSelections(
   }
 
   const formatStyle = await prompts.select({
-    message: "Quota display style",
+    message: "Quota reset periods",
     options: [
       {
-        label: "Single window",
+        label: "One reset period per provider (single window; best for quick quota checks)",
         value: "singleWindow",
       },
-      { label: "All windows", value: "allWindows" },
+      {
+        label: "All reset periods per provider (all windows; compare every tracked reset period)",
+        value: "allWindows",
+      },
     ],
   });
   if (prompts.isCancel(formatStyle)) return null;
 
   const percentDisplayMode = await prompts.select({
-    message: "Percent display (toast/sidebar)",
+    message: "Quota percentage meaning",
     options: [
-      { label: "Remaining", value: "remaining" },
-      { label: "Used", value: "used" },
+      { label: "Remaining quota", value: "remaining", hint: "show how much quota is left" },
+      { label: "Used quota", value: "used", hint: "show how much quota has been consumed" },
     ],
   });
   if (prompts.isCancel(percentDisplayMode)) return null;
 
   const showSessionTokens = await prompts.select({
-    message: "Show session input/output tokens",
+    message: "Session token details",
     options: [
-      { label: "Yes", value: "yes" },
-      { label: "No", value: "no" },
+      { label: "Show session tokens", value: "yes", hint: "include current session input/output token counts when available" },
+      { label: "Hide session tokens", value: "no", hint: "keep quota output shorter" },
     ],
   });
   if (prompts.isCancel(showSessionTokens)) return null;
@@ -1028,7 +1074,7 @@ export async function runInitInstaller(params?: {
     }
 
     if (!plan.edits.some((edit) => edit.changed)) {
-      prompts.outro("No changes needed");
+      prompts.outro(`No changes needed — ${GITHUB_STAR_NOTE}`);
       return 0;
     }
 
@@ -1056,7 +1102,7 @@ export async function runInitInstaller(params?: {
       }
     }
 
-    prompts.outro("Quota init complete");
+    prompts.outro(`Quota init complete — ${GITHUB_STAR_NOTE}`);
     return 0;
   } catch (error) {
     if (error instanceof InitInstallerError) {
