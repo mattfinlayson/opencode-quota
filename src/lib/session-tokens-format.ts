@@ -15,16 +15,6 @@ export type SessionTokenSectionModel = {
   lines: string[];
 };
 
-function hasCachedInput(model: SessionTokensData["models"][number]): boolean {
-  return (model.cachedInput ?? 0) > 0;
-}
-
-function hasAnyCachedInput(sessionTokens: SessionTokensData): boolean {
-  return (
-    (sessionTokens.totalCachedInput ?? 0) > 0 || sessionTokens.models.some((model) => hasCachedInput(model))
-  );
-}
-
 function normalizeMaxWidth(maxWidth?: number): number | undefined {
   if (typeof maxWidth !== "number" || !Number.isFinite(maxWidth)) return undefined;
   return Math.max(1, Math.trunc(maxWidth));
@@ -46,9 +36,10 @@ function formatInputCell(input: number, cachedInput?: number): string {
   return value.length > 6 ? value : padLeft(value, 6);
 }
 
-function buildWideSessionTokenSectionModel(sessionTokens: SessionTokensData): SessionTokenSectionModel {
+function buildWideSessionTokenSectionModel(
+  sessionTokens: SessionTokensData,
+): SessionTokenSectionModel {
   const lines: string[] = [];
-  const showCached = hasAnyCachedInput(sessionTokens);
   for (const model of sessionTokens.models) {
     const shortName = shortenModelName(model.modelID, 20);
     const inStr = formatInputCell(model.input, model.cachedInput);
@@ -68,7 +59,6 @@ function buildCompactSessionTokenSectionModel(
 ): SessionTokenSectionModel {
   const width = Math.max(1, Math.trunc(maxWidth));
   const lines: string[] = [];
-  const showCached = hasAnyCachedInput(sessionTokens);
 
   for (const model of sessionTokens.models) {
     const modelIndent = width > 2 ? "  " : "";
@@ -122,7 +112,12 @@ export function buildSessionTokenSectionModel(
     return buildCompactSessionTokenSectionModel(sessionTokens, maxWidth);
   }
 
-  return buildWideSessionTokenSectionModel(sessionTokens);
+  const wideSection = buildWideSessionTokenSectionModel(sessionTokens);
+  if (maxWidth !== undefined && wideSection.lines.some((line) => line.length > maxWidth)) {
+    return buildCompactSessionTokenSectionModel(sessionTokens, maxWidth);
+  }
+
+  return wideSection;
 }
 
 /**

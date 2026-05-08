@@ -76,6 +76,34 @@ describe("renderSessionTokensLines", () => {
       "  openai/gpt-5          1.2K (456) in     567 out",
     ]);
   });
+
+  it("switches to compact layout when cached input would overflow maxWidth", () => {
+    const lines = renderSessionTokensLines(
+      {
+        models: [
+          {
+            modelID: "openai/gpt-5",
+            input: 1234,
+            cachedInput: 456,
+            totalInput: 1690,
+            output: 567,
+          },
+        ],
+        totalInput: 1234,
+        totalCachedInput: 456,
+        totalCombinedInput: 1690,
+        totalOutput: 567,
+      },
+      { maxWidth: WIDE_SESSION_TOKEN_LINE_WIDTH },
+    );
+
+    expect(lines.every((line) => line.length <= WIDE_SESSION_TOKEN_LINE_WIDTH)).toBe(true);
+    expect(lines).toEqual([
+      SESSION_TOKEN_SECTION_HEADING,
+      "  openai/gpt-5",
+      "    1.2K (456) in  567 out",
+    ]);
+  });
 });
 
 describe("renderSidebarSessionTokenSummaryLines", () => {
