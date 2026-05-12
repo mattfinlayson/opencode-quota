@@ -1,21 +1,9 @@
-/**
- * Synthetic API key configuration resolver
- *
- * Resolution priority (first wins):
- * 1. Environment variable: SYNTHETIC_API_KEY
- * 2. User/global opencode.json/opencode.jsonc: provider.synthetic.options.apiKey
- *    - Supports {env:SYNTHETIC_API_KEY} syntax for environment variable references
- * 3. auth.json: synthetic.key (legacy/fallback)
- */
-
 import { readAuthFile } from "./opencode-auth.js";
 import {
-  getApiKeyDiagnostics,
+  createProviderApiKeyResolver,
   getGlobalOpencodeConfigCandidatePaths,
-  resolveProviderApiKey,
 } from "./api-key-resolver.js";
 
-/** Result of Synthetic API key resolution */
 export interface SyntheticApiKeyResult {
   key: string;
   source: SyntheticKeySource;
@@ -24,60 +12,39 @@ export interface SyntheticApiKeyResult {
 const ALLOWED_SYNTHETIC_ENV_VARS = ["SYNTHETIC_API_KEY"] as const;
 const SYNTHETIC_PROVIDER_KEYS = ["synthetic"] as const;
 
-/** Source of the resolved API key */
 export type SyntheticKeySource =
   | "env:SYNTHETIC_API_KEY"
   | "opencode.json"
   | "opencode.jsonc"
   | "auth.json";
 
-// Re-export for consumers that need path info
 export { getGlobalOpencodeConfigCandidatePaths as getOpencodeConfigCandidatePaths } from "./api-key-resolver.js";
 
-/**
- * Resolve Synthetic API key from all available sources.
- *
- * Priority (first wins):
- * 1. Environment variable: SYNTHETIC_API_KEY
- * 2. User/global opencode.json/opencode.jsonc: provider.synthetic.options.apiKey
- * 3. auth.json: synthetic.key
- *
- * @returns API key and source, or null if not found
- */
+const syntheticApiKeyResolver = createProviderApiKeyResolver<SyntheticKeySource>({
+  envVars: [{ name: "SYNTHETIC_API_KEY", source: "env:SYNTHETIC_API_KEY" }],
+  providerKeys: SYNTHETIC_PROVIDER_KEYS,
+  allowedEnvVars: ALLOWED_SYNTHETIC_ENV_VARS,
+  configJsonSource: "opencode.json",
+  configJsoncSource: "opencode.jsonc",
+  getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
+  auth: {
+    readAuth: readAuthFile,
+    authSource: "auth.json",
+  },
+});
+
 export async function resolveSyntheticApiKey(): Promise<SyntheticApiKeyResult | null> {
-  return resolveProviderApiKey<SyntheticKeySource>({
-    envVars: [{ name: "SYNTHETIC_API_KEY", source: "env:SYNTHETIC_API_KEY" }],
-    providerKeys: SYNTHETIC_PROVIDER_KEYS,
-    allowedEnvVars: ALLOWED_SYNTHETIC_ENV_VARS,
-    configJsonSource: "opencode.json",
-    configJsoncSource: "opencode.jsonc",
-    getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-    auth: {
-      readAuth: readAuthFile,
-      authSource: "auth.json",
-    },
-  });
+  return syntheticApiKeyResolver.resolve();
 }
 
-/**
- * Check if a Synthetic API key is configured
- */
 export async function hasSyntheticApiKey(): Promise<boolean> {
-  const result = await resolveSyntheticApiKey();
-  return result !== null;
+  return syntheticApiKeyResolver.has();
 }
 
-/**
- * Get diagnostic info about Synthetic API key configuration
- */
 export async function getSyntheticKeyDiagnostics(): Promise<{
   configured: boolean;
   source: SyntheticKeySource | null;
   checkedPaths: string[];
 }> {
-  return getApiKeyDiagnostics<SyntheticKeySource>({
-    envVarNames: ["SYNTHETIC_API_KEY"],
-    resolve: resolveSyntheticApiKey,
-    getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-  });
+  return syntheticApiKeyResolver.diagnostics();
 }

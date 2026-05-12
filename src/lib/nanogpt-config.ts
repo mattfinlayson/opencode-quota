@@ -1,21 +1,9 @@
-/**
- * NanoGPT API key configuration resolver.
- *
- * Resolution priority (first wins):
- * 1. Environment variable: NANOGPT_API_KEY or NANO_GPT_API_KEY
- * 2. User/global opencode.json/opencode.jsonc: provider.nanogpt.options.apiKey
- *    or provider["nano-gpt"].options.apiKey
- * 3. auth.json: nanogpt.key or nano-gpt.key
- */
-
 import { getAuthPaths, readAuthFile } from "./opencode-auth.js";
 import {
-  getApiKeyDiagnostics,
+  createProviderApiKeyResolver,
   getGlobalOpencodeConfigCandidatePaths,
-  resolveProviderApiKey,
 } from "./api-key-resolver.js";
 
-/** Result of NanoGPT API key resolution */
 export interface NanoGptApiKeyResult {
   key: string;
   source: NanoGptKeySource;
@@ -24,7 +12,6 @@ export interface NanoGptApiKeyResult {
 const ALLOWED_NANOGPT_ENV_VARS = ["NANOGPT_API_KEY", "NANO_GPT_API_KEY"] as const;
 const NANOGPT_PROVIDER_KEYS = ["nanogpt", "nano-gpt"] as const;
 
-/** Source of the resolved API key */
 export type NanoGptKeySource =
   | "env:NANOGPT_API_KEY"
   | "env:NANO_GPT_API_KEY"
@@ -32,30 +19,30 @@ export type NanoGptKeySource =
   | "opencode.jsonc"
   | "auth.json";
 
-// Re-export for consumers that need path info
 export { getGlobalOpencodeConfigCandidatePaths as getOpencodeConfigCandidatePaths } from "./api-key-resolver.js";
 
+const nanoGptApiKeyResolver = createProviderApiKeyResolver<NanoGptKeySource>({
+  envVars: [
+    { name: "NANOGPT_API_KEY", source: "env:NANOGPT_API_KEY" },
+    { name: "NANO_GPT_API_KEY", source: "env:NANO_GPT_API_KEY" },
+  ],
+  providerKeys: NANOGPT_PROVIDER_KEYS,
+  allowedEnvVars: ALLOWED_NANOGPT_ENV_VARS,
+  configJsonSource: "opencode.json",
+  configJsoncSource: "opencode.jsonc",
+  getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
+  auth: {
+    readAuth: readAuthFile,
+    authSource: "auth.json",
+  },
+});
+
 export async function resolveNanoGptApiKey(): Promise<NanoGptApiKeyResult | null> {
-  return resolveProviderApiKey<NanoGptKeySource>({
-    envVars: [
-      { name: "NANOGPT_API_KEY", source: "env:NANOGPT_API_KEY" },
-      { name: "NANO_GPT_API_KEY", source: "env:NANO_GPT_API_KEY" },
-    ],
-    providerKeys: NANOGPT_PROVIDER_KEYS,
-    allowedEnvVars: ALLOWED_NANOGPT_ENV_VARS,
-    configJsonSource: "opencode.json",
-    configJsoncSource: "opencode.jsonc",
-    getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-    auth: {
-      readAuth: readAuthFile,
-      authSource: "auth.json",
-    },
-  });
+  return nanoGptApiKeyResolver.resolve();
 }
 
 export async function hasNanoGptApiKey(): Promise<boolean> {
-  const result = await resolveNanoGptApiKey();
-  return result !== null;
+  return nanoGptApiKeyResolver.has();
 }
 
 export async function getNanoGptKeyDiagnostics(): Promise<{
@@ -64,15 +51,8 @@ export async function getNanoGptKeyDiagnostics(): Promise<{
   checkedPaths: string[];
   authPaths: string[];
 }> {
-  const authPaths = getAuthPaths();
-  const diagnostics = await getApiKeyDiagnostics<NanoGptKeySource>({
-    envVarNames: ["NANOGPT_API_KEY", "NANO_GPT_API_KEY"],
-    resolve: resolveNanoGptApiKey,
-    getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-  });
-
   return {
-    ...diagnostics,
-    authPaths,
+    ...(await nanoGptApiKeyResolver.diagnostics()),
+    authPaths: getAuthPaths(),
   };
 }

@@ -226,6 +226,30 @@ export interface ApiKeyCheckedPathsConfig {
   getConfigCandidates?: () => ConfigCandidate[];
 }
 
+export function createProviderApiKeyResolver<Source extends string>(
+  config: ResolveProviderApiKeyConfig<Source>,
+): {
+  resolve: () => Promise<ApiKeyResult<Source> | null>;
+  has: () => Promise<boolean>;
+  diagnostics: () => Promise<{
+    configured: boolean;
+    source: Source | null;
+    checkedPaths: string[];
+  }>;
+} {
+  const resolve = () => resolveProviderApiKey(config);
+  return {
+    resolve,
+    has: async () => (await resolve()) !== null,
+    diagnostics: () =>
+      getApiKeyDiagnostics({
+        envVarNames: config.envVars.map((envVar) => envVar.name),
+        resolve,
+        getConfigCandidates: config.getConfigCandidates,
+      }),
+  };
+}
+
 /**
  * Resolve an API key from trusted env vars and config files.
  *

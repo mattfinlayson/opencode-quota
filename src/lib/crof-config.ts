@@ -1,15 +1,6 @@
-/**
- * Crof.ai API key configuration resolver.
- *
- * Resolution priority (first wins):
- * 1. Environment variable: CROF_API_KEY or CROFAI_API_KEY
- * 2. User/global opencode.json/opencode.jsonc: provider.crof.options.apiKey
- */
-
 import {
-  getApiKeyDiagnostics,
+  createProviderApiKeyResolver,
   getGlobalOpencodeConfigCandidatePaths,
-  resolveProviderApiKey,
 } from "./api-key-resolver.js";
 
 export interface CrofApiKeyResult {
@@ -24,23 +15,24 @@ export type CrofKeySource = "env:CROF_API_KEY" | "env:CROFAI_API_KEY" | "opencod
 
 export { getGlobalOpencodeConfigCandidatePaths as getOpencodeConfigCandidatePaths } from "./api-key-resolver.js";
 
+const crofApiKeyResolver = createProviderApiKeyResolver<CrofKeySource>({
+  envVars: [
+    { name: "CROF_API_KEY", source: "env:CROF_API_KEY" },
+    { name: "CROFAI_API_KEY", source: "env:CROFAI_API_KEY" },
+  ],
+  providerKeys: CROF_PROVIDER_KEYS,
+  allowedEnvVars: ALLOWED_CROF_ENV_VARS,
+  configJsonSource: "opencode.json",
+  configJsoncSource: "opencode.jsonc",
+  getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
+});
+
 export async function resolveCrofApiKey(): Promise<CrofApiKeyResult | null> {
-  return resolveProviderApiKey<CrofKeySource>({
-    envVars: [
-      { name: "CROF_API_KEY", source: "env:CROF_API_KEY" },
-      { name: "CROFAI_API_KEY", source: "env:CROFAI_API_KEY" },
-    ],
-    providerKeys: CROF_PROVIDER_KEYS,
-    allowedEnvVars: ALLOWED_CROF_ENV_VARS,
-    configJsonSource: "opencode.json",
-    configJsoncSource: "opencode.jsonc",
-    getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-  });
+  return crofApiKeyResolver.resolve();
 }
 
 export async function hasCrofApiKey(): Promise<boolean> {
-  const result = await resolveCrofApiKey();
-  return result !== null;
+  return crofApiKeyResolver.has();
 }
 
 export async function getCrofKeyDiagnostics(): Promise<{
@@ -48,9 +40,5 @@ export async function getCrofKeyDiagnostics(): Promise<{
   source: CrofKeySource | null;
   checkedPaths: string[];
 }> {
-  return getApiKeyDiagnostics<CrofKeySource>({
-    envVarNames: ["CROF_API_KEY", "CROFAI_API_KEY"],
-    resolve: resolveCrofApiKey,
-    getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-  });
+  return crofApiKeyResolver.diagnostics();
 }
