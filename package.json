@@ -75,8 +75,7 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.8.0",
     "typescript": "^5.8.0",
-    "vitest": "^4.0.17",
-    "zod": "4.1.8"
+    "vitest": "^4.0.17"
   },
   "dependencies": {
     "@clack/prompts": "^1.2.0",
@@ -85,9 +84,6 @@
     "comment-json": "^5.0.0",
     "solid-js": "^1.9.12",
     "xdg-basedir": "^5.1.0"
-  },
-  "overrides": {
-    "zod": "4.1.8"
   },
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.4.3"
