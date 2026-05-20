@@ -20,7 +20,6 @@ vi.mock("fs/promises", () => ({
 }));
 
 vi.mock("../src/lib/opencode-auth.js", () => ({
-  getAuthPaths: vi.fn(() => ["/tmp/auth.json"]),
   readAuthFile: vi.fn(),
 }));
 
@@ -265,7 +264,6 @@ describe("synthetic-config", () => {
       expect(result.configured).toBe(true);
       expect(result.source).toBe("env:SYNTHETIC_API_KEY");
       expect(result.checkedPaths).toContain("env:SYNTHETIC_API_KEY");
-      expect(result.authPaths).toEqual(["/tmp/auth.json"]);
     });
 
     it("returns diagnostics with checked paths", async () => {
@@ -281,7 +279,6 @@ describe("synthetic-config", () => {
 
       expect(result.configured).toBe(false);
       expect(result.checkedPaths).toContain(expectedPath);
-      expect(result.authPaths).toEqual(["/tmp/auth.json"]);
     });
   });
 

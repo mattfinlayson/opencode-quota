@@ -1,4 +1,4 @@
-import { getAuthPaths, readAuthFile } from "./opencode-auth.js";
+import { readAuthFile } from "./opencode-auth.js";
 import {
   createProviderApiKeyResolver,
   getGlobalOpencodeConfigCandidatePaths,
@@ -45,10 +45,6 @@ export async function getChutesKeyDiagnostics(): Promise<{
   configured: boolean;
   source: ChutesKeySource | null;
   checkedPaths: string[];
-  authPaths: string[];
 }> {
-  return {
-    ...(await chutesApiKeyResolver.diagnostics()),
-    authPaths: getAuthPaths(),
-  };
+  return chutesApiKeyResolver.diagnostics();
 }

@@ -110,9 +110,9 @@ describe("minimax auth resolution", () => {
         { state: "invalid", error: "MiniMax auth entry present but type is missing or invalid" },
       ],
       [
-        "type is api but key is empty",
-        withMiniMaxAuth({ type: "api", key: "", access: "access-token" }),
-        { state: "invalid", error: "MiniMax auth entry present but key is empty" },
+        "type is api but credentials are empty",
+        withMiniMaxAuth({ type: "api", key: "", access: "" }),
+        { state: "invalid", error: "MiniMax auth entry present but credentials are empty" },
       ],
     ])("returns %j when %s", (_label, auth, expected) => {
       expect(resolveMiniMaxAuth(auth as any)).toEqual(expected);
@@ -123,6 +123,11 @@ describe("minimax auth resolution", () => {
         "key when both key and access are present",
         withMiniMaxAuth({ type: "api", key: "primary-key", access: "access-key" }),
         { state: "configured", apiKey: "primary-key", endpoint: "international" },
+      ],
+      [
+        "access when key is missing",
+        withMiniMaxAuth({ type: "api", access: "access-token" }),
+        { state: "configured", apiKey: "access-token", endpoint: "international" },
       ],
     ])("returns %j when using %s", (_label, auth, expected) => {
       expect(resolveMiniMaxAuth(auth as any)).toEqual(expected);
@@ -224,29 +229,18 @@ describe("minimax auth resolution", () => {
       await expect(resolveMiniMaxAuthCached()).resolves.toEqual({ state: "none" });
     });
 
-    it("falls back to auth.json with strict api key auth", async () => {
-      mocks.readAuthFileCached.mockResolvedValueOnce(
-        withMiniMaxAuth({ type: "api", key: "auth-key" }),
-      );
-
-      await expect(resolveMiniMaxAuthCached()).resolves.toEqual({
-        state: "configured",
-        apiKey: "auth-key",
-        endpoint: "international",
-      });
-      expect(mocks.readAuthFileCached).toHaveBeenCalledWith({
-        maxAgeMs: DEFAULT_MINIMAX_AUTH_CACHE_MAX_AGE_MS,
-      });
-    });
-
-    it("returns invalid for access-only auth.json", async () => {
+    it("falls back to auth.json and preserves access fallback", async () => {
       mocks.readAuthFileCached.mockResolvedValueOnce(
         withMiniMaxAuth({ type: "api", access: "access-token" }),
       );
 
       await expect(resolveMiniMaxAuthCached()).resolves.toEqual({
-        state: "invalid",
-        error: "MiniMax auth entry present but key is empty",
+        state: "configured",
+        apiKey: "access-token",
+        endpoint: "international",
+      });
+      expect(mocks.readAuthFileCached).toHaveBeenCalledWith({
+        maxAgeMs: DEFAULT_MINIMAX_AUTH_CACHE_MAX_AGE_MS,
       });
     });
 
@@ -290,13 +284,6 @@ describe("minimax auth resolution", () => {
         state: "configured",
         apiKey: "china-key",
         endpoint: "china",
-      });
-    });
-
-    it("returns invalid for MiniMax China access-only auth.json", () => {
-      expect(resolveMiniMaxChinaAuth(withMiniMaxChinaAuth({ type: "api", access: "china-token" }))).toEqual({
-        state: "invalid",
-        error: "MiniMax auth entry present but key is empty",
       });
     });
   });

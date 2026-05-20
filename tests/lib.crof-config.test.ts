@@ -20,7 +20,6 @@ vi.mock("fs/promises", () => ({
 }));
 
 vi.mock("../src/lib/opencode-auth.js", () => ({
-  getAuthPaths: vi.fn(() => ["/tmp/auth.json"]),
   readAuthFile: vi.fn(),
 }));
 
@@ -145,7 +144,7 @@ describe("crof-config", () => {
     await expect(resolveCrofApiKey()).resolves.toBeNull();
   });
 
-  it("falls back to auth.json when no other sources are configured", async () => {
+  it("does not fall back to auth.json", async () => {
     const { readAuthFile } = await import("../src/lib/opencode-auth.js");
 
     fsConfigMocks.existsSync.mockReturnValue(false);
@@ -157,11 +156,8 @@ describe("crof-config", () => {
     });
 
     const { resolveCrofApiKey } = await import("../src/lib/crof-config.js");
-    await expect(resolveCrofApiKey()).resolves.toEqual({
-      key: "auth-key",
-      source: "auth.json",
-    });
-    expect(readAuthFile).toHaveBeenCalled();
+    await expect(resolveCrofApiKey()).resolves.toBeNull();
+    expect(readAuthFile).not.toHaveBeenCalled();
   });
 
   it("returns diagnostics with source and checked paths", async () => {
@@ -173,6 +169,5 @@ describe("crof-config", () => {
     expect(result.configured).toBe(true);
     expect(result.source).toBe("env:CROFAI_API_KEY");
     expect(result.checkedPaths).toContain("env:CROFAI_API_KEY");
-    expect(result.authPaths).toEqual(["/tmp/auth.json"]);
   });
 });

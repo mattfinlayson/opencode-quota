@@ -2,7 +2,6 @@ import {
   createProviderApiKeyResolver,
   getGlobalOpencodeConfigCandidatePaths,
 } from "./api-key-resolver.js";
-import { getAuthPaths, readAuthFile } from "./opencode-auth.js";
 
 export interface CrofApiKeyResult {
   key: string;
@@ -12,12 +11,7 @@ export interface CrofApiKeyResult {
 const ALLOWED_CROF_ENV_VARS = ["CROF_API_KEY", "CROFAI_API_KEY"] as const;
 const CROF_PROVIDER_KEYS = ["crof"] as const;
 
-export type CrofKeySource =
-  | "env:CROF_API_KEY"
-  | "env:CROFAI_API_KEY"
-  | "opencode.json"
-  | "opencode.jsonc"
-  | "auth.json";
+export type CrofKeySource = "env:CROF_API_KEY" | "env:CROFAI_API_KEY" | "opencode.json" | "opencode.jsonc";
 
 export { getGlobalOpencodeConfigCandidatePaths as getOpencodeConfigCandidatePaths } from "./api-key-resolver.js";
 
@@ -31,10 +25,6 @@ const crofApiKeyResolver = createProviderApiKeyResolver<CrofKeySource>({
   configJsonSource: "opencode.json",
   configJsoncSource: "opencode.jsonc",
   getConfigCandidates: getGlobalOpencodeConfigCandidatePaths,
-  auth: {
-    readAuth: readAuthFile,
-    authSource: "auth.json",
-  },
 });
 
 export async function resolveCrofApiKey(): Promise<CrofApiKeyResult | null> {
@@ -49,10 +39,6 @@ export async function getCrofKeyDiagnostics(): Promise<{
   configured: boolean;
   source: CrofKeySource | null;
   checkedPaths: string[];
-  authPaths: string[];
 }> {
-  return {
-    ...(await crofApiKeyResolver.diagnostics()),
-    authPaths: getAuthPaths(),
-  };
+  return crofApiKeyResolver.diagnostics();
 }
